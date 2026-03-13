@@ -200,9 +200,14 @@ export default function Home() {
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Available Integrations
-          </h2>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Available Integrations
+            </h2>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
+              Fully customizable
+            </p>
+          </div>
           {!Array.isArray(integrations) || integrations.length === 0 ? (
             <p className="text-gray-600 dark:text-gray-300">
               No integrations available. Make sure your Membrane workspace is configured correctly.
@@ -270,7 +275,7 @@ export default function Home() {
       </div>
 
       {/* Connection Dialog */}
-      {selectedIntegration && (
+      {connectionDialogOpen && selectedIntegration && (
         <ConnectionDialog
           integrationKey={selectedIntegration.key || selectedIntegration.id}
           integrationName={selectedIntegration.name}

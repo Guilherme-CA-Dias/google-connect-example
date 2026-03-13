@@ -42,6 +42,7 @@ export default function ConnectionDialog({
   onClose,
   onSuccess,
 }: ConnectionDialogProps) {
+  const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [integrationLoading, setIntegrationLoading] = useState(true)
   const [integration, setIntegration] = useState<any>(null)
@@ -50,6 +51,10 @@ export default function ConnectionDialog({
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (isOpen && integrationKey) {
@@ -215,7 +220,7 @@ export default function ConnectionDialog({
     }
   }
 
-  if (!isOpen) return null
+  if (!mounted || !isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -241,6 +246,9 @@ export default function ConnectionDialog({
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Connect to {integrationName}
               </h2>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
+                Fully customizable
+              </p>
               {integrationDescription && (
                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                   {integrationDescription}

@@ -13,11 +13,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get user ID from query params or use a default for demo purposes
-    // In production, you'd get this from your authentication system
-    const searchParams = request.nextUrl.searchParams
-    const userId = searchParams.get('userId') || 'demo-user-1'
-    const userName = searchParams.get('userName') || 'Demo User'
+    // Generate a random UUID for each token request
+    const userId = crypto.randomUUID()
+    const userName = userId // Use the same UUID as the name
 
     const tokenData = {
       workspaceKey: workspaceKey,

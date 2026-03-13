@@ -9,34 +9,42 @@ This document explains the API requests made when connecting to Google Drive usi
 
 ---
 
-## Step 1: Get Integration Details
+## Step 1: Get List of Integrations
 
 **SDK Call:**
 ```typescript
-const integrationData = await membrane.integration("google-drive").get()
+const result = await membrane.integrations.find()
+const integrations = result.items
 ```
+
+> Can be customized to get information about any apps
 
 **Response:**
 ```json
 {
-  "id": "69b43ec79d3a27a5f93cef68",
-  "name": "Google Drive",
-  "key": "google-drive",
-  "logoUri": "https://static.integration.app/connectors/gdrive/logo.png",
-  "authType": "oauth2",
-  "authOptions": [
+  "items": [
     {
-      "key": "auth-proxy",
-      "type": "proxy",
-      "title": "Auth Proxy"
+      "id": "69b43ec79d3a27a5f93cef68",
+      "name": "Google Drive",
+      "key": "google-drive",
+      "logoUri": "https://static.integration.app/connectors/gdrive/logo.png",
+      "authType": "oauth2",
+      "authOptions": [
+        {
+          "key": "auth-proxy",
+          "type": "proxy",
+          "title": "Auth Proxy"
+        }
+      ]
     }
   ]
 }
 ```
 
 **What happens:**
-- Extract `authOptions` array
-- Select auth option: `auth-proxy`
+- Returns paginated list of available integrations
+- Each integration contains `authOptions` array
+- Select integration: `google-drive` with auth option: `auth-proxy`
 - Note: `auth-proxy` has no `inputSchema`, so no form fields needed
 
 ---

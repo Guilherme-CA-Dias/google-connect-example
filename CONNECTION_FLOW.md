@@ -9,7 +9,31 @@ This document explains the API requests made when connecting to Google Drive usi
 
 ---
 
-## Step 1: Get List of Integrations
+## Step 1: Install and Initialize SDK
+
+**Install the SDK:**
+```bash
+npm install @membranehq/sdk
+```
+
+**Initialize the SDK:**
+```typescript
+import { MembraneClient } from '@membranehq/sdk'
+
+const membrane = new MembraneClient({
+  fetchToken: async () => {
+    const response = await fetch('/api/membrane-token')
+    const { token } = await response.json()
+    return token
+  },
+})
+```
+
+> The `fetchToken` function should call your backend endpoint that generates the authentication token
+
+---
+
+## Step 2: Get List of Integrations
 
 **SDK Call:**
 ```typescript
@@ -49,7 +73,7 @@ const integrations = result.items
 
 ---
 
-## Step 2: Create Connection
+## Step 3: Create Connection
 
 **SDK Call:**
 ```typescript
@@ -81,7 +105,7 @@ const result = await membrane.integration("google-drive").connect({
 
 ---
 
-## Step 3: Handle OAuth Redirect
+## Step 4: Handle OAuth Redirect
 
 **Process:**
 1. Redirect user to `clientAction.uiUrl`
@@ -104,7 +128,7 @@ Your App → Redirect to clientAction.uiUrl
 
 ---
 
-## Step 4: Verify Connection Status
+## Step 5: Verify Connection Status
 
 **SDK Call:**
 ```typescript
@@ -133,20 +157,22 @@ const connection = await membrane.connection(connectionId).get()
 ## Complete Flow
 
 ```
-1. membrane.integration("google-drive").get()
-   → Returns integration with authOptions
+1. Install @membranehq/sdk and initialize MembraneClient
    
-2. Extract auth-proxy option (no inputSchema needed)
+2. membrane.integrations.find()
+   → Returns paginated list of integrations with authOptions
    
-3. membrane.integration("google-drive").connect({ authOptionKey: "auth-proxy" })
+3. Extract auth-proxy option (no inputSchema needed)
+   
+4. membrane.integration("google-drive").connect({ authOptionKey: "auth-proxy" })
    → Returns connection with clientAction.uiUrl
    
-4. Redirect user to clientAction.uiUrl
+5. Redirect user to clientAction.uiUrl
    → Google OAuth page
    → User authorizes
    → Google callback → Membrane completes connection
    
-5. membrane.connection(connectionId).get()
+6. membrane.connection(connectionId).get()
    → Verify connection is active
 ```
 

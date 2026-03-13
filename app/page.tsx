@@ -31,7 +31,6 @@ export default function Home() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [configuringKey, setConfiguringKey] = useState<string | null>(null)
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null)
 
@@ -156,25 +155,6 @@ export default function Home() {
     }
   }
 
-  const handleConfigure = async (integration: Integration) => {
-    if (!integration.connection) return
-    
-    try {
-      setError(null)
-      setConfiguringKey(integration.key || integration.id)
-      const membrane = getMembraneClient()
-      await membrane.connection(integration.connection.id).openReconnectUI()
-      // Reload connections after configuration
-      setTimeout(() => {
-        loadConnections()
-        setConfiguringKey(null)
-      }, 2000)
-    } catch (err) {
-      console.error('Error configuring:', err)
-      setError('Failed to configure. Please try again.')
-      setConfiguringKey(null)
-    }
-  }
 
   if (loading) {
     return (
@@ -187,10 +167,18 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Membrane Google Integration
-          </h1>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Membrane Google Integration
+            </h1>
+          </div>
+          <a
+            href="/file-picker"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+          >
+            File Picker
+          </a>
         </div>
 
         {error && (
@@ -241,17 +229,6 @@ export default function Home() {
                       </h3>
                     </div>
                     <div className="flex gap-2">
-                      {integration.connection && (
-                        <button
-                          onClick={() => handleConfigure(integration)}
-                          disabled={configuringKey === (integration.key || integration.id)}
-                          className="px-4 py-2 rounded-md font-medium transition-colors bg-green-100 text-green-700 dark:bg-green-700 dark:text-green-100 hover:bg-green-200 hover:text-green-800 dark:hover:bg-green-800 dark:hover:text-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {configuringKey === (integration.key || integration.id)
-                            ? 'Configuring...'
-                            : 'Configure'}
-                        </button>
-                      )}
                       <button
                         onClick={() =>
                           integration.connection

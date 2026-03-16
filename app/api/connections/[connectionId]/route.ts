@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateAdminToken } from '@/lib/admin-token'
+import { generateMembraneTokenServer } from '@/lib/membrane-token'
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     const adminToken = await generateAdminToken()
 
     const response = await fetch(
-      `https://api.integration.app/connections/${connectionId}?includeSecrets=true`,
+      `https://api.getmembrane.com/connections/${connectionId}?includeSecrets=true`,
       {
         headers: {
           Authorization: `Bearer ${adminToken}`,

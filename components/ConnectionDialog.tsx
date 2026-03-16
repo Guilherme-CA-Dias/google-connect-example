@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getMembraneClient } from '@/lib/membrane'
+import { fetchIntegration } from '@/lib/membrane-api'
 
 interface ConnectionDialogProps {
   integrationKey: string
@@ -62,13 +62,44 @@ export default function ConnectionDialog({
     }
   }, [isOpen, integrationKey])
 
+  // Listen for postMessage events from the popup window
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleMessage = (event: MessageEvent) => {
+      // Handle connection success/error messages from Membrane popup
+      if (event.data && typeof event.data === 'object') {
+        // Check for connection data
+        if (event.data.connectionId || event.data.connection) {
+          console.log('Connection successful:', event.data)
+          setLoading(false)
+          onSuccess()
+          onClose()
+          return
+        }
+
+        // Check for error
+        if (event.data.error) {
+          console.error('Connection error:', event.data.error)
+          setError(event.data.error || 'Connection failed')
+          setLoading(false)
+          return
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [isOpen, onSuccess, onClose])
+
   const loadIntegration = async () => {
     try {
       setIntegrationLoading(true)
       setError(null)
-      const membrane = getMembraneClient()
-      const integrationAccessor = membrane.integration(integrationKey)
-      const integrationData = await integrationAccessor.get()
+      const integrationData = await fetchIntegration(integrationKey)
       
       setIntegration(integrationData)
       
@@ -183,8 +214,6 @@ export default function ConnectionDialog({
     try {
       setLoading(true)
       setError(null)
-      const membrane = getMembraneClient()
-      const integrationAccessor = membrane.integration(integrationKey)
 
       // Prepare input data - only include non-empty values
       const inputData: Record<string, any> = {}
@@ -195,27 +224,76 @@ export default function ConnectionDialog({
         }
       })
 
-      const result = await integrationAccessor.connect({
-        authOptionKey: selectedAuthOption.key,
-        input: Object.keys(inputData).length > 0 ? inputData : undefined,
-      })
-
-      if (result) {
-        onSuccess()
-        onClose()
-      } else {
-        // For OAuth flows, the SDK might handle redirects automatically
-        // If result is null, it might mean the flow was initiated
-        // We'll wait a bit and then check for success
-        setTimeout(() => {
-          onSuccess()
-          onClose()
-        }, 1000)
+      // Get the token first
+      const tokenResponse = await fetch('/api/membrane-token')
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get authentication token')
       }
+      const { token } = await tokenResponse.json()
+
+      // Use integrationId (required)
+      if (integration?.id) {
+        // ok
+      } else {
+        throw new Error('Integration id is not available. Please try again.')
+      }
+
+      // Prepare redirectUri - use our own callback URL (not Membrane's)
+      const redirectUri = `${window.location.origin}/api/oauth-callback`
+
+      // Prepare the payload object (will be stringified)
+      const payload: Record<string, any> = {
+        redirectUri: redirectUri,
+        integrationId: integration.id,
+      }
+
+      if (selectedAuthOption.key) {
+        payload.authOptionKey = selectedAuthOption.key
+      }
+
+      // Add input if there are any fields
+      if (Object.keys(inputData).length > 0) {
+        payload.input = inputData
+      }
+
+      // Add token + integrationId as query parameters to the /connect URL
+      const connectUrl = new URL('https://api.getmembrane.com/connect')
+      connectUrl.searchParams.set('token', token)
+      connectUrl.searchParams.set('integrationId', integration.id)
+
+      // Create a form and submit it directly to Membrane's /connect endpoint
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = connectUrl.toString()
+      form.enctype = 'application/x-www-form-urlencoded'
+
+      // Add payload input
+      const payloadInput = document.createElement('input')
+      payloadInput.type = 'hidden'
+      payloadInput.name = 'payload'
+      payloadInput.value = JSON.stringify(payload)
+      form.appendChild(payloadInput)
+
+      // Open a popup window and submit the form to it
+      const popup = window.open('', 'membrane-connect', 'width=600,height=700,scrollbars=yes,resizable=yes')
+      
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.')
+      }
+
+      // Set the form target to the popup window
+      form.target = 'membrane-connect'
+
+      // Append form to body, submit, then remove
+      document.body.appendChild(form)
+      form.submit()
+      document.body.removeChild(form)
+
+      // Don't close dialog yet - wait for postMessage from popup
+      // The popup will send connection info via postMessage when done
     } catch (err: any) {
       console.error('Error connecting:', err)
       setError(err.message || 'Failed to connect. Please try again.')
-    } finally {
       setLoading(false)
     }
   }

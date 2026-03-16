@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getMembraneClient } from '@/lib/membrane'
+import { fetchIntegrations, fetchConnections } from '@/lib/membrane-api'
 import ConnectionDialog from '@/components/ConnectionDialog'
 
 interface Integration {
@@ -36,11 +36,10 @@ export default function Home() {
 
   const loadIntegrations = async () => {
     try {
-      const membrane = getMembraneClient()
-      const result = await membrane.integrations.find()
+      const result = await fetchIntegrations()
       console.log('Integrations result:', result)
       // PaginationResponse has an 'items' property
-      const integrationsList = (result?.items || []).map((item) => ({
+      const integrationsList = (result?.items || []).map((item: any) => ({
         id: item.id,
         key: item.key,
         name: item.name,
@@ -58,10 +57,9 @@ export default function Home() {
 
   const loadConnections = async () => {
     try {
-      const membrane = getMembraneClient()
-      const result = await membrane.connections.find()
+      const result = await fetchConnections()
       // PaginationResponse has an 'items' property
-      const connectionsList = (result?.items || []).map((item) => ({
+      const connectionsList = (result?.items || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         integrationKey: item.integration?.key || item.integrationId,
@@ -118,6 +116,26 @@ export default function Home() {
       }
     }
     initialize()
+
+    // Check for OAuth callback parameters
+    const urlParams = new URLSearchParams(window.location.search)
+    const connectionId = urlParams.get('connectionId')
+    const success = urlParams.get('success')
+    const errorParam = urlParams.get('error')
+
+    if (success && connectionId) {
+      // Connection successful, reload connections
+      setTimeout(() => {
+        loadConnections()
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname)
+      }, 1000)
+    } else if (errorParam) {
+      // Connection failed
+      setError(errorParam)
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   // Update integrations when connections change
@@ -145,8 +163,19 @@ export default function Home() {
     
     try {
       setError(null)
-      const membrane = getMembraneClient()
-      await membrane.connection(integration.connection.id).archive()
+      const token = await fetch('/api/membrane-token').then(r => r.json()).then(d => d.token)
+      const response = await fetch(`https://api.integration.app/connections/${integration.connection.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to disconnect')
+      }
+
       // Reload connections after disconnection
       loadConnections()
     } catch (err) {

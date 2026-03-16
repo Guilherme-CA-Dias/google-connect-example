@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getMembraneClient } from '@/lib/membrane'
+import { fetchConnections } from '@/lib/membrane-api'
 
 interface GoogleDriveDocument {
   id: string
@@ -93,13 +93,12 @@ export default function FilePickerPage() {
   useEffect(() => {
     const getConnection = async () => {
       try {
-        const membrane = getMembraneClient()
-        const result = await membrane.connections.find()
+        const result = await fetchConnections()
         const connections = result?.items || []
 
         // Find Google Drive connection
         const googleDriveConnection = connections.find(
-          (conn) =>
+          (conn: any) =>
             conn.integration?.key === 'google-drive' &&
             !conn.disconnected
         )
@@ -143,7 +142,6 @@ export default function FilePickerPage() {
       const connectorParams = connectionInfo.connectorParameters || {}
       const credentials = connectionInfo.credentials || {}
 
-      const clientId = connectorParams.clientId
       const accessToken = credentials.accessToken
 
       if (!accessToken) {

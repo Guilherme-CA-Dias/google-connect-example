@@ -115,76 +115,71 @@ document.body.removeChild(form)
 The form submission opens a popup window that:
 1. Shows OAuth authorization page
 2. User authorizes the connection
-3. Membrane redirects to your `redirectUri` (or default callback) with connection information
+3. Membrane redirects to your `redirectUri` with connection information
 
 ### Step 6: OAuth Callback Handler
 
-**Option 1: Use Membrane's Default Callback**
-
-Membrane's default callback URL (`https://api.getmembrane.com/oauth-callback`) already sends a `postMessage` to the parent window and closes the popup. You can use this by either:
-- Not specifying a `redirectUri` in the payload, or
-- Setting `redirectUri: "https://api.getmembrane.com/oauth-callback"`
-
-**Option 2: Custom Callback (Optional)**
-
-If you need custom handling, you can create your own callback endpoint that receives the redirect with query parameters:
+Your callback endpoint (`/api/oauth-callback`) receives the redirect with query parameters:
 - `connectionId`: (on success) The ID of the created connection
 - `error`: (on error) Error message
 - `errorData`: (on error) Additional error details
 
-**Custom Callback Implementation:**
+**Callback Implementation - Sending Message to Top Window:**
 
-Your callback endpoint should return an HTML page that sends `postMessage` to the parent window:
+The callback endpoint returns an HTML page that sends a `postMessage` to the **top window** (the parent window that opened the popup):
 
 ```typescript
-// app/api/oauth-callback/route.ts
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const connectionId = searchParams.get('connectionId')
-  const error = searchParams.get('error')
-  const errorData = searchParams.get('errorData')
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head><title>Connecting...</title></head>
-      <body>
-        <script>
-          (function() {
-            const connectionId = ${connectionId ? `"${connectionId}"` : 'null'};
-            const error = ${error ? `"${error}"` : 'null'};
-            const errorData = ${errorData ? `"${errorData}"` : 'null'};
-            
-            if (window.opener) {
-              if (error) {
-                window.opener.postMessage({
-                  error: error,
-                  errorData: errorData
-                }, '*');
-              } else if (connectionId) {
-                window.opener.postMessage({
-                  connectionId: connectionId,
-                  connection: { id: connectionId }
-                }, '*');
-              }
-              window.close();
+// In your /api/oauth-callback route
+const html = `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Connecting...</title>
+    </head>
+    <body>
+      <script>
+        (function() {
+          const connectionId = ${connectionId ? `"${connectionId}"` : 'null'};
+          const error = ${error ? `"${error}"` : 'null'};
+          const errorData = ${errorData ? `"${errorData}"` : 'null'};
+          
+          // Send message to the top window (parent window that opened this popup)
+          if (window.opener) {
+            if (error) {
+              window.opener.postMessage({
+                error: error,
+                errorData: errorData
+              }, '*');
+            } else if (connectionId) {
+              window.opener.postMessage({
+                connectionId: connectionId,
+                connection: { id: connectionId }
+              }, '*');
             } else {
-              window.location.href = '/';
+              window.opener.postMessage({
+                error: 'Unknown error occurred'
+              }, '*');
             }
-          })();
-        </script>
-        <p>Connecting...</p>
-      </body>
-    </html>
-  `
-
-  return new NextResponse(html, {
-    headers: { 'Content-Type': 'text/html' },
-  })
-}
+            // Close the popup window after sending the message
+            window.close();
+          } else {
+            // Fallback: redirect to home page if no opener
+            window.location.href = '/';
+          }
+        })();
+      </script>
+      <p>Connecting...</p>
+    </body>
+  </html>
+`
 ```
 
-**Note:** If you use Membrane's default callback, you don't need to implement a custom callback endpoint. The default callback already handles sending `postMessage` and closing the popup.
+**Key Points:**
+- `window.opener` refers to the parent/top window that opened this popup
+- `window.opener.postMessage()` sends the message to the top window
+- The message is sent with `'*'` as the target origin (consider restricting this in production for security)
+- `window.close()` automatically closes the popup after sending the message
+- The popup window closes itself, and the parent window receives the connection information
 
 ### Step 7: Listen for postMessage Events
 

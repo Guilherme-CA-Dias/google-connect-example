@@ -256,6 +256,21 @@ export default function ConnectionDialog({
         payload.input = inputData
       }
 
+      // If you want to initiate the connection through the SDK instead of
+      // posting directly to /connect, use:
+      //
+      // const membrane = getMembraneClient()
+      // const integrationAccessor = membrane.integration(integrationKey)
+      // const result = await integrationAccessor.connect({
+      //   authOptionKey: selectedAuthOption.key,
+      //   input: Object.keys(inputData).length > 0 ? inputData : undefined,
+      // })
+      //
+      // if (result) {
+      //   onSuccess()
+      //   onClose()
+      // }
+
       // Add token + integrationId as query parameters to the /connect URL
       const connectUrl = new URL('https://api.getmembrane.com/connect')
       connectUrl.searchParams.set('token', token)
